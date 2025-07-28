@@ -9,6 +9,8 @@ async def handleClient(reader, writer):
     await Clienter(reader, writer).start_terminal()
 
 class RemoteExecutorServer:
+    sleeper_task = None
+    up = False
     def __init__(self) -> None:
         self.server = None
 
@@ -21,18 +23,33 @@ class RemoteExecutorServer:
 
     def serverUp(self, do_block = False):
         asyncio.run(self.beginLoop(do_block))
+        RemoteExecutorServer.up = True
         if do_block:
             RemoteExecutorServer.sleepForever()
 
     @staticmethod
     async def sleeper():
+        RemoteExecutorServer.sleeper_task = asyncio.current_task()
         while True:
             await asyncio.sleep(1000)
 
     @staticmethod
     def sleepForever():
-        oled.text("Serv activ", 0, 10)
-        asyncio.run(RemoteExecutorServer.sleeper())
+        oled.text("Srv activ", 0, 20)
+        oled.text(f"Port {vars.PORT}", 0, 30)
+        try:
+            asyncio.run(RemoteExecutorServer.sleeper())
+        except BaseException as e:
+            oled.fill(1)
+            oled.fill(0)
+            oled.text("Serv down", 0, 0)
+            # raise(e)
+
+    @staticmethod
+    def closeServers():
+        RemoteExecutorServer.up = False
+        if RemoteExecutorServer.sleeper_task:
+            RemoteExecutorServer.sleeper_task.cancel()
 
 # one of theese for each connection
 class Clienter:
@@ -44,7 +61,7 @@ class Clienter:
         self.writer = writer
         self.id = Clienter.ids
         self.timer = None
-        self.context = {'print': self.custom_print}
+        self.context = {'print': self.custom_print, "close_server": RemoteExecutorServer.closeServers}
         Clienter.count += 1
         Clienter.ids += 1
         print(f"connection {self.id} created")
