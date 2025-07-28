@@ -1,6 +1,9 @@
 import asyncio
 
 class Timeout:
+    class TimeoutError(BaseException):
+        ...
+
     def __init__(self, delay, before_close):
         self.before_close = before_close
         self.delay = delay
@@ -23,4 +26,4 @@ class Timeout:
         self.before_close()
         self._timeout_task.cancel()
         # print("timed out")
-        raise TimeoutError()
+        # raise Timeout.TimeoutError()

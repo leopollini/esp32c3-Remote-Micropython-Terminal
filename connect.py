@@ -19,13 +19,14 @@ def connect():
     try:
         while not sta_if.isconnected():
             oled.text(".", i, 0)
-            i += 8
-            if i > 80:
-                i = 4 * 8
-                oled.text("    ", i, 0)
+            i += 3
+            oled.text("    ", i, 0)
             print('.', end='')
             time.sleep(0.5)
-    except:
+    except KeyboardInterrupt as e:
+        exit()
+    except Exception as e:
+        print(e.__class__, e)
         oled.fill(0)
         oled.text("Conn fail", 0, 0)
         print("Connection failed!")
@@ -41,6 +42,4 @@ def connect():
     time.sleep(0.5)
 
     vars.PI_ADDR = sta_if.ifconfig()[0]
-
-connect()
     

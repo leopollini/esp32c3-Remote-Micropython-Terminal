@@ -5,10 +5,12 @@ import time
 import connect
 
 
-try:
-    time.sleep(5)
-except KeyboardInterrupt:
-    ...
+# try:
+#     time.sleep(5)
+# except KeyboardInterrupt:
+#     ...
+
+# time.sleep(3)
 
 oled.fill(1)
 oled.fill(0)
@@ -17,13 +19,14 @@ oled.fill(0)
 
 connect.connect()
 vars.up = True
+oled.fill(0)
 utils.printStatus()
 
 import remoteExecutor
 
 
 serv = remoteExecutor.RemoteExecutorServer()
-serv.serverUp()
+serv.serverUp(True)
 
-while True:
-    time.sleep(1000)
+# while True:
+#     await asyncio.sleep(100)

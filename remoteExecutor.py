@@ -1,32 +1,38 @@
-import socket
 import asyncio
-import sys
 from Timeout import Timeout
+from utils import vars
+from sh1106_oled import oled
 
-PORT = 22
-ESP_NAME = "0.0.0.0"
-CONN_TIMEOUT_SEC = 60
 # CHANGE_IO = False
+
+async def handleClient(reader, writer):
+    await Clienter(reader, writer).start_terminal()
 
 class RemoteExecutorServer:
     def __init__(self) -> None:
         self.server = None
 
     async def beginLoop(self, do_block) -> None:
-        self.server = await asyncio.start_server(handleClient, ESP_NAME, PORT)
-        print(f"initialized server at port {PORT}")
+        self.server = await asyncio.start_server(handleClient, vars.ESP_NAME, vars.PORT)
+        print(f"initialized server at vars.PORT {vars.PORT}")
 
-        if do_block:
-            while True:
-                await asyncio.sleep(1000)
         # async with self.server:
         #     await self.server.serve_forever()
 
     def serverUp(self, do_block = False):
         asyncio.run(self.beginLoop(do_block))
+        if do_block:
+            RemoteExecutorServer.sleepForever()
 
+    @staticmethod
+    async def sleeper():
+        while True:
+            await asyncio.sleep(1000)
 
-        
+    @staticmethod
+    def sleepForever():
+        oled.text("Serv activ", 0, 10)
+        asyncio.run(RemoteExecutorServer.sleeper())
 
 # one of theese for each connection
 class Clienter:
@@ -47,6 +53,8 @@ class Clienter:
         self.writer.close()
         Clienter.count -= 1
         print(f"connection {self.id} concluded")
+        self.writer.close()
+        self.reader.close()
 
 
     def custom_print(self, *args, sep=' ', end='\n'):
@@ -57,51 +65,66 @@ class Clienter:
         except Exception as e:
             self.writer.write('[print error: {}]'.format(e))
     
-    #this script grants only two levels of context
     async def start_terminal(self):
         self.sendWelcome()
-        multiline_cmd = []
-        inner_context = False
+        command = ""
+        context_depth = 0
+        importStuff()
         while True:
             msg = await self.recv()
             if msg == None:     # client has disconnected. Conclude coroutine
                 break
             msg = msg.strip()
-            print(f"Executing {msg}")
-            multiline_cmd.append(msg)
-            if inner_context and msg != "":
-                self.send("... ")
+            print(f"Executing {msg}, conetxt depth = {context_depth}")
+            command += ("\n" + ("\t" * context_depth) + msg if context_depth != 0 else msg)
+            if context_depth > 0:
+                if msg != "":
+                    if msg[-1] == ":":
+                        context_depth += 1
+                    self.send("..." * context_depth + " ")
+                    continue
+                context_depth -= 1
+            if context_depth != 0:
+                self.send("..." * context_depth + " ")
                 continue
-            inner_context = False
-            command = "\n\t".join(multiline_cmd)
             try:
                 # print(f"trying '{command}'")
                 compile(command, "<stdin>", "exec")
             except SyntaxError as e:
                 # print(e.__class__, e)
-                if ":" not in command:
-                    raise e
+                if command.strip()[-1] != ":":
+                    self.custom_print(e.__class__, e)
+                    command = ""
+                    self.send(">>> ")
+                    print("Done")
+                    continue
                 self.send("... ")
-                inner_context = True
+                context_depth = 1
                 continue
             except BaseException as e:
-                print(e.__class__, e)
-                multiline_cmd = []
+                self.custom_print(e.__class__, e)
+                command = ""
 
             try:
                 exec(command, self.context)
             except BaseException as e:
-                print(e.__class__, e)
+                self.custom_print(e.__class__, e)
             finally:
-                multiline_cmd = []
+                command = ""
             self.send(">>> ")
             print("Done")
             
-
+    def importStuff(self):
+        for cmd in vars.DEFAULT_AUTOIMPORT_LIST:
+            try:
+                exec(cmd, self.context)
+            except:
+                ...
+            
 
     def sendWelcome(self):
         print(f"New client. Id: {self.id}")
-        self.send("Welcome to " + ESP_NAME + "'s micropython ambient.\n")
+        self.send("Welcome to " + vars.ESP_NAME + "'s micropython ambient.\n")
         self.send(">>> ")
 
     def send(self, msg):
@@ -114,11 +137,12 @@ class Clienter:
 
     # this is executed after the timeout of the connection, and after this the coroutine is closed and the client is lost.
     def send_final_msg(self):
-        self.send(f"\n#####\nConnection timed out. You have been kicked from {ESP_NAME}.\n#####\n")
+        self.send(f"\n#####\nConnection timed out. You have been kicked from {vars.ESP_NAME}.\n#####\n")
+        print(f"Closing connection {self.id} because of timeout")
         self.__del__()  # called here because is not called before coroutine end.
 
     async def recv(self):
-        async with Timeout(CONN_TIMEOUT_SEC, self.send_final_msg):
+        async with Timeout(vars.CONN_TIMEOUT_SEC, self.send_final_msg):
             rec = (await self.reader.readline()).decode()
             if rec == None or rec == "":
                 return None
@@ -126,29 +150,3 @@ class Clienter:
             return rec
         return None
         
-        
-
-async def handleClient(reader, writer):
-    await Clienter(reader, writer).start_terminal()
-
-
-
-
-
-    # def timeoutDetect(self):
-
-    #     async def timer(sec):
-    #         timer_finished = False
-    #         try:
-    #             print("timer started")
-    #             await asyncio.sleep(sec)
-    #             timer_finished = True
-    #             print("timer ended")
-    #         except asyncio.CancelledError:
-    #             print("timer reset")
-    #         if timer_finished:
-    #             raise TimeoutError("Connection timed out!")
-            
-    #     if self.timer != None:
-    #         self.timer.cancel()
-    #     self.timer = asyncio.create_task(timer(CONN_TIMEOUT_SEC))
