@@ -9,3 +9,13 @@ This project aims towards the creation of a general purpose remotely controlled 
 - Timeout.py: reimplements asyncio's timeout() macro, since it is missing in micropython's asyncio
 - boot.py: does nothins, but ensures that no other boot.py is executed
 - main.py: runs connect and starts server
+- utils.py: contains some utility functions and common variables
+
+## Useful infos
+My board implements [this](https://micropython.org/download/ESP32_GENERIC_C3/) version of Micropython.
+
+The connection port for the remote shell is 514
+
+The ip address of the esp32 is printed both on the serial terminal and on the mini oled display.
+
+Inside utils.py::vars you can set some useful variables, such as AUTOSTART_SERVER or AUTORESTART_SERVER
