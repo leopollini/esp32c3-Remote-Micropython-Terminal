@@ -3,6 +3,7 @@ from utils import vars, utils
 from sh1106_oled import oled
 import time
 import connect
+import sys
 
 # AVOID_MICROPYTHONS_CTRLC = True
 
@@ -11,6 +12,8 @@ import connect
 #         time.sleep(5)
 #     except KeyboardInterrupt:
 #         ...
+
+# time.sleep(2)
 
 def main():
     oled.fill(1)
@@ -26,7 +29,7 @@ def main():
 
     if not vars.connected:
         oled.text("No serv", 0, 30)
-        exit()
+        sys.exit()
 
     import remoteExecutor
 

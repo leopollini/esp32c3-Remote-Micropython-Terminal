@@ -11,6 +11,7 @@ async def handleClient(reader, writer):
 class RemoteExecutorServer:
     sleeper_task = None
     up = False
+    
     def __init__(self) -> None:
         self.server = None
 
@@ -86,7 +87,7 @@ class Clienter:
         self.sendWelcome()
         command = ""
         context_depth = 0
-        importStuff()
+        self.importStuff()
         while True:
             msg = await self.recv()
             if msg == None:     # client has disconnected. Conclude coroutine
